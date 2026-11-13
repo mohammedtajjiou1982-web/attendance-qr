@@ -1,0 +1,8 @@
+{
+  "appId": "ma.school.attendanceqr",
+  "appName": "حضور التلاميذ QR",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  }
+}
