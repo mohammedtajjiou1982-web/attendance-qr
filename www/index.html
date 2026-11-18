@@ -255,7 +255,71 @@ $('exportCsv').onclick=()=>{
  const csv='\uFEFF'+[['رقم التلميذ','الاسم','القسم','التاريخ','الوقت','طريقة التسجيل'],...rows.map(r=>[r.id,r.name,r.className,r.date,r.time,r.method==='qr'?'QR':'يدوي'])].map(row=>row.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(';')).join('\r\n');
  const a=document.createElement('a'),url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.href=url;a.download='attendance-'+date+'.csv';a.click();URL.revokeObjectURL(url);
 };
-$('printBtn').onclick=()=>window.print();
+
+$('printBtn').onclick=()=>{
+  const date=$('recordDate').value||today();
+  const cls=$('recordClass').value;
+  const list=records
+    .filter(r=>r.date===date&&(!cls||r.className===cls))
+    .sort((a,b)=>a.time.localeCompare(b.time));
+
+  const rows=list.map((r,i)=>`
+    <tr>
+      <td>${i+1}</td>
+      <td>${escapeHtml(r.name)}</td>
+      <td>${escapeHtml(r.className)}</td>
+      <td>${escapeHtml(r.time)}</td>
+    </tr>
+  `).join('');
+
+  const w=window.open('','_blank');
+  if(!w){
+    alert('تعذر فتح صفحة الطباعة. تحقق من السماح بالنوافذ المنبثقة.');
+    return;
+  }
+
+  w.document.write(`
+    <!DOCTYPE html>
+    <html lang="ar" dir="rtl">
+    <head>
+      <meta charset="UTF-8">
+      <title>سجل حضور التلاميذ</title>
+      <style>
+        body{font-family:Tahoma,Arial;padding:25px;color:#000}
+        h2{text-align:center}
+        p{text-align:center}
+        table{width:100%;border-collapse:collapse;margin-top:20px}
+        th,td{border:1px solid #000;padding:10px;text-align:center}
+        th{background:#eee}
+        .total{margin-top:20px;font-weight:bold}
+      </style>
+    </head>
+    <body>
+      <h2>سجل حضور التلاميذ</h2>
+      <p>التاريخ: ${date}</p>
+      <p>القسم: ${cls?escapeHtml(cls):'جميع الأقسام'}</p>
+      <table>
+        <thead>
+          <tr>
+            <th>رقم</th>
+            <th>اسم التلميذ</th>
+            <th>القسم</th>
+            <th>وقت الحضور</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows||'<tr><td colspan="4">لا توجد سجلات لهذا التاريخ</td></tr>'}
+        </tbody>
+      </table>
+      <p class="total">مجموع الحاضرين: ${list.length}</p>
+      <script>
+        window.onload=()=>setTimeout(()=>window.print(),500);
+      <\/script>
+    </body>
+    </html>
+  `);
+  w.document.close();
+};
 $('clearDay').onclick=()=>{
  const date=$('recordDate').value||today();if(!confirm('حذف جميع سجلات يوم '+date+'؟'))return;
  records=records.filter(r=>r.date!==date);save();refresh();
