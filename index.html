@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>نظام تسجيل دخول التلاميذ QR</title>
+<style>
+:root{font-family:Tahoma,Arial,sans-serif;color:#172033;background:#eef3f9;--navy:#12345a;--blue:#2563eb;--teal:#0f766e;--line:#dbe4ef;--soft:#f5f8fc}
+*{box-sizing:border-box}body{margin:0}.top{background:linear-gradient(125deg,#102a43 0%,#174b78 55%,#0f766e 100%);color:white;padding:25px 16px;box-shadow:0 5px 18px #102a4326}
+.top h1{margin:0 0 7px;font-size:24px}.top p{margin:0;color:#dce9f8}
+main{max-width:1100px;margin:20px auto;padding:0 14px}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+button,.tab{border:0;border-radius:10px;padding:11px 15px;background:#e7eef7;color:#173b68;font-weight:bold;cursor:pointer;transition:transform .15s,filter .15s;box-shadow:0 1px 2px #102a4310}button:hover,.tab:hover{filter:brightness(.97);transform:translateY(-1px)}
+.tab.active,button.primary{background:linear-gradient(120deg,#1d4ed8,#2563eb);color:white}
+button.danger{background:#ffe4e4;color:#a21d1d}button:disabled{opacity:.5;cursor:not-allowed}
+.panel{background:white;border:1px solid #e0e8f1;border-radius:16px;padding:19px;margin-bottom:17px;box-shadow:0 6px 20px #19395b0c}
+h2{font-size:19px;margin:0 0 14px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
+label{display:block;font-size:14px;font-weight:bold;margin-bottom:6px}
+input,select{width:100%;padding:11px;border:1px solid #cbd5e1;border-radius:9px;font:inherit;background:white}input:focus,select:focus{outline:2px solid #93c5fd;border-color:#3b82f6}
+.actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:13px}.actions button{min-height:42px}
+.stat{background:linear-gradient(145deg,#fff,#f1f6fc);border:1px solid #e2eaf3;border-radius:13px;padding:15px}.stat b{display:block;font-size:27px;color:#1d4ed8;margin-top:4px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px}
+table{width:100%;border-collapse:collapse;min-width:580px}th,td{padding:10px;border-bottom:1px solid #e5eaf1;text-align:right;font-size:14px}th{background:#edf3fa;color:#183b5b;font-weight:700}tbody tr:nth-child(even){background:#fafcff}tbody tr:hover{background:#f0f7ff}
+.tablewrap{overflow:auto}.muted{color:#64748b;font-size:13px}.hidden{display:none!important}
+#reader{max-width:500px;margin:12px auto}#qrout{margin-top:14px;text-align:center}
+.qr-card{display:inline-block;border:1px dashed #94a3b8;border-radius:12px;padding:16px;margin:8px;text-align:center}
+#message{padding:12px;border-radius:9px;margin-top:12px;display:none}
+#bulkPrintArea{display:none}
+.bulk-qr-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;direction:rtl}
+.bulk-qr-card{border:1px solid #9ca3af;border-radius:8px;padding:10px;text-align:center;break-inside:avoid;page-break-inside:avoid;min-height:205px}
+.bulk-qr-card strong{display:block;font-size:14px;margin-bottom:4px}.bulk-qr-card .qr-code{display:flex;justify-content:center;margin:6px auto}
+.bulk-qr-card .qr-code img,.bulk-qr-card .qr-code canvas{max-width:125px!important;max-height:125px!important}
+@media print{body.printing-bulk>*:not(#bulkPrintArea){display:none!important}body.printing-bulk #bulkPrintArea{display:block!important;padding:8mm}body.printing-bulk .bulk-qr-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.ok{background:#dcfce7;color:#166534}.err{background:#fee2e2;color:#991b1b}.info{background:#e0f2fe;color:#075985}
+footer{text-align:center;color:#64748b;padding:20px;font-size:12px}
+@media print{.top,.tabs,.no-print,footer{display:none!important}.panel{box-shadow:none;border:0}body{background:white}}
+</style>
+</head>
+<body>
+<header class="top">
+<h1>نظام تسجيل دخول التلاميذ بواسطة QR</h1>
+<p>تدبير الحضور اليومي داخل المؤسسة التعليمية</p>
+</header>
+<main>
+<div class="stats">
+ <div class="stat"><span>مجموع التلاميذ</span><b id="total">0</b></div>
+ <div class="stat"><span>حضور اليوم</span><b id="present">0</b></div>
+ <div class="stat"><span>لم يسجلوا الدخول</span><b id="absent">0</b></div>
+</div>
+<nav class="tabs no-print">
+<button class="tab" data-tab="scan">تسجيل الدخول</button>
+<button class="tab active" data-tab="students">التلاميذ و QR</button>
+<button class="tab" data-tab="records">سجل الحضور</button>
+</nav>
+
+<section id="scan" class="panel hidden">
+<h2>مسح رمز التلميذ</h2>
+<p class="muted">اضغط على تشغيل الكاميرا ووجّهها نحو رمز QR الخاص بالتلميذ.</p>
+<div class="actions no-print">
+<button class="primary" id="startScan">تشغيل الكاميرا</button>
+<button id="stopScan">إيقاف الكاميرا</button>
+</div>
+<div id="reader"></div>
+<div id="message"></div>
+<div class="panel" style="background:#f8fafc">
+<h2>تسجيل يدوي عند تعذر المسح</h2>
+<div class="grid">
+<div><label for="manualId">رقم التلميذ</label><input id="manualId" placeholder="مثال: 2026001"></div>
+</div>
+<div class="actions"><button class="primary" id="manualBtn">تسجيل الدخول</button></div>
+</div>
+</section>
+
+<section id="students" class="panel">
+<h2>إضافة تلميذ</h2>
+<div class="grid">
+<div><label for="sid">رقم التلميذ (فريد)</label><input id="sid" placeholder="مثال: 2026001"></div>
+<div><label for="sname">الاسم الكامل</label><input id="sname" placeholder="اسم التلميذ"></div>
+<div><label for="sclass">القسم</label><input id="sclass" placeholder="مثال: 1/1"></div>
+</div>
+<div class="actions"><button class="primary" id="addStudent">إضافة التلميذ</button></div>
+<div id="qrout"></div>
+<hr style="border:0;border-top:1px solid #e5eaf1;margin:18px 0">
+<h2>لائحة التلاميذ</h2>
+<div class="grid">
+<div><label for="filterClass">تصفية حسب القسم</label><select id="filterClass"><option value="">كل الأقسام</option></select></div>
+<div><label for="studentSearch">بحث</label><input id="studentSearch" placeholder="الاسم أو الرقم"></div>
+</div>
+<div class="actions no-print">
+<button class="primary" id="bulkPrintBtn">طباعة QR لجميع التلاميذ</button>
+<button id="bulkPrintSelectedBtn">طباعة QR للمحددين</button>
+<button id="exportStudentsExcel">تحميل لائحة التلاميذ Excel</button>
+<button id="importStudentsExcel">استيراد لائحة Excel</button>
+<input id="studentsExcelFile" type="file" accept=".xlsx,.xls" hidden>
+<span class="muted">تتم طباعة التلاميذ الظاهرين حسب القسم والبحث. الاستيراد يضيف التلاميذ الجدد ويحدّث بيانات الموجودين دون حذف سجلات الحضور.</span>
+</div>
+<div class="tablewrap" style="margin-top:12px"><table><thead><tr><th><input id="selectVisibleStudents" type="checkbox" aria-label="اختيار الظاهرين" style="width:auto"></th><th>الرقم</th><th>الاسم</th><th>القسم</th><th>QR</th><th>حذف</th></tr></thead><tbody id="studentRows"></tbody></table></div>
+</section>
+
+<section id="records" class="panel hidden">
+<h2>سجل الدخول</h2>
+<div class="grid">
+<div><label for="recordDate">التاريخ</label><input type="date" id="recordDate"></div>
+<div><label for="recordClass">القسم</label><select id="recordClass"><option value="">كل الأقسام</option></select></div>
+</div>
+<div class="actions no-print">
+<button id="backupJson">نسخة احتياطية كاملة (JSON)</button>
+<button id="restoreJson">استرجاع نسخة احتياطية</button>
+<input id="backupFile" type="file" accept=".json,application/json" hidden>
+<button class="primary" id="exportCsv">تحميل سجل الحضور Excel</button>
+<button id="printBtn">طباعة</button>
+<button class="danger" id="clearDay">حذف سجلات هذا اليوم</button>
+</div>
+<div class="tablewrap" style="margin-top:12px"><table><thead><tr><th>رقم التلميذ</th><th>الاسم</th><th>القسم</th><th>التاريخ</th><th>الوقت</th><th>طريقة التسجيل</th></tr></thead><tbody id="recordRows"></tbody></table></div>
+<p class="muted">يتم حفظ البيانات في هذا المتصفح على هذا الجهاز فقط. صدّر نسخة CSV بانتظام للاحتفاظ بسجل خارجي.</p>
+</section>
+</main>
+<div id="bulkPrintArea" aria-hidden="true"></div>
+<footer>نظام محلي لتسجيل الحضور — احتفظ بنسخة احتياطية من البيانات بانتظام.</footer>
+
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+const today=()=>new Date().toLocaleDateString('en-CA');
+let students=JSON.parse(localStorage.getItem('qr_students')||'[]');
+let records=JSON.parse(localStorage.getItem('qr_records')||'[]');
+let scanner=null, scanning=false,lastScanText='',lastScanAt=0;
+$('recordDate').value=today();
+function save(){localStorage.setItem('qr_students',JSON.stringify(students));localStorage.setItem('qr_records',JSON.stringify(records));}
+// نغمة نجاح عند تطابق رقم QR مع تلميذ مسجل، وإنذار عند عدم التطابق
+let soundContext=null;
+function playScanSound(type){
+ try{
+  const AudioCtx=window.AudioContext||window.webkitAudioContext;if(!AudioCtx)return;
+  soundContext=soundContext||new AudioCtx();
+  if(soundContext.state==='suspended')soundContext.resume();
+  const now=soundContext.currentTime;
+  const notes=type==='ok'?[{f:880,t:0,d:.12},{f:1175,t:.16,d:.16}]:[{f:240,t:0,d:.22},{f:180,t:.27,d:.28}];
+  notes.forEach(n=>{
+   const osc=soundContext.createOscillator(),gain=soundContext.createGain();
+   osc.type=type==='ok'?'sine':'square';osc.frequency.setValueAtTime(n.f,now+n.t);
+   gain.gain.setValueAtTime(.0001,now+n.t);gain.gain.exponentialRampToValueAtTime(.18,now+n.t+.015);
+   gain.gain.exponentialRampToValueAtTime(.0001,now+n.t+n.d);
+   osc.connect(gain);gain.connect(soundContext.destination);osc.start(now+n.t);osc.stop(now+n.t+n.d+.02);
+  });
+ }catch(e){console.warn('تعذر تشغيل الصوت',e);}
+}
+function downloadFile(filename,content,type){
+ const blob=new Blob([content],{type}),url=URL.createObjectURL(blob),a=document.createElement('a');
+ a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+// نسخة JSON كاملة تشمل قائمة التلاميذ وسجل الحضور
+$('backupJson').onclick=()=>{
+ const payload={app:'QR Student Attendance',version:1,createdAt:new Date().toISOString(),students,records};
+ downloadFile('qr-attendance-backup-'+today()+'.json',JSON.stringify(payload,null,2),'application/json;charset=utf-8');
+ alert('تم تجهيز ملف النسخة الاحتياطية. احتفظ به في مكان آمن.');
+};
+$('restoreJson').onclick=()=>$('backupFile').click();
+$('backupFile').onchange=async e=>{
+ const file=e.target.files[0];if(!file)return;
+ try{
+  const data=JSON.parse(await file.text());
+  if(!data||!Array.isArray(data.students)||!Array.isArray(data.records))throw new Error('صيغة الملف غير صحيحة');
+  if(!data.students.every(x=>x&&x.id!=null&&x.name!=null&&x.className!=null))throw new Error('قائمة التلاميذ غير صالحة');
+  if(!data.records.every(x=>x&&x.id!=null&&x.date&&x.time))throw new Error('سجل الحضور غير صالح');
+  if(!confirm('سيتم استبدال قائمة التلاميذ وسجل الحضور الحاليين بمحتويات النسخة الاحتياطية. هل تريد المتابعة؟'))return;
+  students=data.students;records=data.records;save();refresh();alert('تم استرجاع النسخة الاحتياطية بنجاح.');
+ }catch(err){alert('تعذر استرجاع النسخة: '+err.message);}
+ finally{e.target.value='';}
+};
+function normalizeHeader(v){return String(v??'').trim().toLowerCase().replace(/[\s_\-]/g,'');}
+function getColumn(row,aliases){const keys=Object.keys(row);const key=keys.find(k=>aliases.includes(normalizeHeader(k)));return key===undefined?undefined:row[key];}
+$('exportStudentsExcel').onclick=()=>{
+ if(!window.XLSX){alert('مكتبة Excel لم تُحمّل. تحقق من اتصال الإنترنت.');return;}
+ if(!students.length){alert('لا توجد لائحة تلاميذ لتحميلها.');return;}
+ const data=students.map(s=>({'رقم التلميذ':String(s.id),'الاسم الكامل':s.name,'القسم':s.className}));
+ const ws=XLSX.utils.json_to_sheet(data,{header:['رقم التلميذ','الاسم الكامل','القسم']});
+ ws['!cols']=[{wch:20},{wch:32},{wch:18}];
+ const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'لائحة التلاميذ');XLSX.writeFile(wb,'students-list-'+today()+'.xlsx');
+};
+$('importStudentsExcel').onclick=()=>{
+ if(!window.XLSX){alert('مكتبة Excel لم تُحمّل. تحقق من اتصال الإنترنت.');return;}
+ $('studentsExcelFile').click();
+};
+$('studentsExcelFile').onchange=async e=>{
+ const file=e.target.files[0];if(!file)return;
+ try{
+  const bytes=await file.arrayBuffer(),wb=XLSX.read(bytes,{type:'array',cellText:true,cellDates:false});
+  const ws=wb.Sheets[wb.SheetNames[0]],rows=XLSX.utils.sheet_to_json(ws,{defval:'',raw:false});
+  if(!rows.length)throw new Error('الملف فارغ');
+  const imported=rows.map((r,i)=>{
+   const id=getColumn(r,['رقمالتلميذ','الرقم','id','studentid','code']);
+   const name=getColumn(r,['الاسمالكامل','الاسم','name','studentname']);
+   const className=getColumn(r,['القسم','class','classname','المستوى']);
+   if(id===''||id===undefined||name===''||name===undefined||className===''||className===undefined)throw new Error('تأكد من وجود أعمدة رقم التلميذ والاسم والقسم. خطأ في السطر '+(i+2));
+   return {id:String(id).trim(),name:String(name).trim(),className:String(className).trim()};
+  });
+  if(imported.some(s=>!s.id||!s.name||!s.className))throw new Error('توجد بيانات ناقصة في الملف');
+  const map=new Map(students.map(s=>[String(s.id),s]));
+  imported.forEach(s=>map.set(s.id,s));students=Array.from(map.values());save();refresh();
+  alert('تم استيراد '+imported.length+' تلميذاً. تمت إضافة الجديد وتحديث الموجود، دون المساس بسجل الحضور.');
+ }catch(err){alert('تعذر استيراد ملف Excel: '+err.message);}
+ finally{e.target.value='';}
+};
+
+function msg(t,type='info'){const e=$('message');e.textContent=t;e.className=type;e.style.display='block';}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function dayRecords(){return records.filter(r=>r.date===today());}
+function refresh(){
+ const classes=[...new Set(students.map(s=>s.className).filter(Boolean))].sort();
+ for(const id of ['filterClass','recordClass']){
+  const old=$(id).value;$(id).innerHTML='<option value="">كل الأقسام</option>'+classes.map(c=>`<option>${escapeHtml(c)}</option>`).join('');
+  $(id).value=classes.includes(old)?old:'';
+ }
+ $('total').textContent=students.length;
+ $('present').textContent=dayRecords().length;
+ $('absent').textContent=Math.max(0,students.length-dayRecords().length);
+ renderStudents();renderRecords();
+}
+const selectedStudentIds=new Set();
+function renderStudents(){
+ const cls=$('filterClass').value, q=$('studentSearch').value.trim().toLowerCase();
+ const list=students.filter(s=>(!cls||s.className===cls)&&(!q||(s.id+' '+s.name).toLowerCase().includes(q)));
+ $('studentRows').innerHTML=list.map(s=>`<tr><td><input class="student-pick" type="checkbox" value="${escapeHtml(s.id)}" aria-label="اختيار ${escapeHtml(s.name)}" style="width:auto"></td><td>${escapeHtml(s.id)}</td><td>${escapeHtml(s.name)}</td><td>${escapeHtml(s.className)}</td><td><button onclick="makeQr('${encodeURIComponent(s.id)}')">عرض QR</button></td><td><button class="danger" onclick="deleteStudent('${encodeURIComponent(s.id)}')">حذف</button></td></tr>`).join('')||'<tr><td colspan="6">لا توجد نتائج</td></tr>';
+ const master=$('selectVisibleStudents');if(master)master.checked=list.length>0&&list.every(s=>selectedStudentIds.has(String(s.id)));
+}
+function renderRecords(){
+ const date=$('recordDate').value||today(), cls=$('recordClass').value;
+ const list=records.filter(r=>r.date===date&&(!cls||r.className===cls)).sort((a,b)=>a.time.localeCompare(b.time));
+ $('recordRows').innerHTML=list.map(r=>`<tr><td>${escapeHtml(r.id)}</td><td>${escapeHtml(r.name)}</td><td>${escapeHtml(r.className)}</td><td>${r.date}</td><td>${r.time}</td><td>${r.method==='qr'?'QR':'يدوي'}</td></tr>`).join('')||'<tr><td colspan="6">لا توجد تسجيلات لهذا اليوم</td></tr>';
+}
+$('addStudent').onclick=()=>{
+ const id=$('sid').value.trim(),name=$('sname').value.trim(),className=$('sclass').value.trim();
+ if(!id||!name||!className){alert('يرجى ملء جميع الحقول.');return;}
+ if(students.some(s=>s.id===id)){alert('رقم التلميذ موجود مسبقاً.');return;}
+ students.push({id,name,className});save();$('sid').value='';$('sname').value='';$('sclass').value='';
+ makeQr(encodeURIComponent(id));refresh();
+};
+function bulkPrintQrs(chosenList=null){
+ const list=chosenList||students;
+ if(!list.length){alert(chosenList?'يرجى اختيار تلميذ واحد على الأقل.':'لا يوجد تلاميذ لطباعة رموزهم.');return;}
+ if(!window.QRCode){alert('تعذر تحميل مولّد QR. تحقق من اتصال الإنترنت ثم أعد المحاولة.');return;}
+ const area=$('bulkPrintArea');
+ area.innerHTML='<h2 style="text-align:center;margin-bottom:12px">رموز QR للتلاميذ</h2><div class="bulk-qr-grid">'+list.map(s=>`<div class="bulk-qr-card"><strong>${escapeHtml(s.name)}</strong><div>${escapeHtml(s.className)}</div><div>${escapeHtml(s.id)}</div><div class="qr-code" data-student-id="${escapeHtml(s.id)}"></div></div>`).join('')+'</div>';
+ area.querySelectorAll('.qr-code').forEach(node=>new QRCode(node,{text:'SCHOOL-STUDENT:'+node.dataset.studentId,width:125,height:125,correctLevel:QRCode.CorrectLevel.M}));
+ document.body.classList.add('printing-bulk');
+ setTimeout(()=>window.print(),500);
+}
+$('bulkPrintBtn').onclick=()=>bulkPrintQrs();
+$('bulkPrintSelectedBtn').onclick=()=>{
+ const list=students.filter(s=>selectedStudentIds.has(String(s.id)));
+ bulkPrintQrs(list);
+};
+$('selectVisibleStudents').onchange=e=>{
+ const cls=$('filterClass').value,q=$('studentSearch').value.trim().toLowerCase();
+ const visible=students.filter(s=>(!cls||s.className===cls)&&(!q||(s.id+' '+s.name).toLowerCase().includes(q)));
+ visible.forEach(s=>e.target.checked?selectedStudentIds.add(String(s.id)):selectedStudentIds.delete(String(s.id)));
+ renderStudents();
+};
+$('studentRows').addEventListener('change',e=>{
+ if(!e.target.classList.contains('student-pick'))return;
+ if(e.target.checked)selectedStudentIds.add(e.target.value);else selectedStudentIds.delete(e.target.value);
+ const master=$('selectVisibleStudents');
+ const boxes=[...document.querySelectorAll('.student-pick')];master.checked=boxes.length>0&&boxes.every(x=>x.checked);
+});
+window.addEventListener('afterprint',()=>{document.body.classList.remove('printing-bulk');$('bulkPrintArea').innerHTML='';});
+$('bulkPrintBtn').onclick=bulkPrintQrs;
+window.makeQr=encodedId=>{
+ const id=decodeURIComponent(encodedId),s=students.find(x=>x.id===id);if(!s)return;
+ $('qrout').innerHTML=`<div class="qr-card"><strong>${escapeHtml(s.name)}</strong><br>${escapeHtml(s.className)}<br><span class="muted">${escapeHtml(s.id)}</span><div id="qrcode"></div><button class="no-print" onclick="window.print()">طباعة الرمز</button></div>`;
+ if(window.QRCode)new QRCode($('qrcode'),{text:'SCHOOL-STUDENT:'+s.id,width:180,height:180});
+ else $('qrcode').textContent='تعذر تحميل مولّد QR؛ تحقق من الاتصال بالإنترنت.';
+};
+window.deleteStudent=encodedId=>{
+ const id=decodeURIComponent(encodedId);if(!confirm('هل تريد حذف هذا التلميذ؟'))return;
+ students=students.filter(s=>s.id!==id);selectedStudentIds.delete(String(id));save();refresh();
+};
+function register(id,method){
+ id=String(id||'').trim().replace(/^SCHOOL-STUDENT:/,'');
+ const s=students.find(x=>x.id===id);
+ if(!s){playScanSound('error');msg('هذا الرمز غير مسجل في لائحة التلاميذ. رقم: '+id,'err');return;}
+ playScanSound('ok');
+ if(records.some(r=>r.id===id&&r.date===today())){msg('تم تسجيل دخول '+s.name+' مسبقاً اليوم.','info');return;}
+ const now=new Date(),time=now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+ records.push({id:s.id,name:s.name,className:s.className,date:today(),time,method});
+ save();refresh();msg('تم تسجيل دخول التلميذ: '+s.name+' — '+time,'ok');
+}
+$('manualBtn').onclick=()=>{if(soundContext&&soundContext.state==='suspended')soundContext.resume();register($('manualId').value,'manual');$('manualId').value='';};
+$('startScan').onclick=async()=>{
+ try{const AC=window.AudioContext||window.webkitAudioContext;if(AC){soundContext=soundContext||new AC();if(soundContext.state==='suspended')await soundContext.resume();}}catch(e){}
+ if(!window.Html5Qrcode){msg('مكتبة قراءة QR لم تُحمّل. تحقق من اتصال الإنترنت ثم أعد فتح الصفحة.','err');return;}
+ if(scanning)return;
+ try{
+  scanner=new Html5Qrcode('reader');
+  await scanner.start({facingMode:'environment'},{fps:10,qrbox:{width:230,height:230}},text=>{const now=Date.now();if(text===lastScanText&&now-lastScanAt<1800)return;lastScanText=text;lastScanAt=now;register(text,'qr');});
+  scanning=true;msg('الكاميرا تعمل. وجّهها نحو رمز QR.','info');
+ }catch(e){msg('تعذر تشغيل الكاميرا. اسمح للمتصفح باستخدام الكاميرا وافتح الصفحة عبر HTTPS أو localhost.','err');}
+};
+$('stopScan').onclick=async()=>{if(scanner&&scanning){await scanner.stop();scanner.clear();scanning=false;msg('تم إيقاف الكاميرا.','info');}};
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{
+ document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x===b));
+ ['scan','students','records'].forEach(id=>$(id).classList.toggle('hidden',id!==b.dataset.tab));
+ if(b.dataset.tab==='records')renderRecords();
+});
+$('filterClass').onchange=renderStudents;$('studentSearch').oninput=renderStudents;
+$('recordDate').onchange=renderRecords;$('recordClass').onchange=renderRecords;
+$('exportCsv').onclick=()=>{
+ if(!window.XLSX){alert('مكتبة Excel لم تُحمّل. تحقق من اتصال الإنترنت.');return;}
+ const date=$('recordDate').value||today(),cls=$('recordClass').value;
+ const rows=records.filter(r=>r.date===date&&(!cls||r.className===cls)).map(r=>({'رقم التلميذ':String(r.id),'الاسم الكامل':r.name,'القسم':r.className,'التاريخ':r.date,'الوقت':r.time,'طريقة التسجيل':r.method==='qr'?'QR':'يدوي'}));
+ if(!rows.length){alert('لا توجد سجلات حضور في التاريخ والقسم المحددين.');return;}
+ const ws=XLSX.utils.json_to_sheet(rows,{header:['رقم التلميذ','الاسم الكامل','القسم','التاريخ','الوقت','طريقة التسجيل']});
+ ws['!cols']=[{wch:18},{wch:30},{wch:16},{wch:14},{wch:14},{wch:18}];
+ const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'سجل الحضور');XLSX.writeFile(wb,'attendance-'+date+'.xlsx');
+};
+$('printBtn').onclick=()=>window.print();
+$('clearDay').onclick=()=>{
+ const date=$('recordDate').value||today();if(!confirm('حذف جميع سجلات يوم '+date+'؟'))return;
+ records=records.filter(r=>r.date!==date);save();refresh();
+};
+refresh();
+</script>
+</body>
+</html>
