@@ -259,6 +259,33 @@ $('exportCsv').onclick=()=>{
 $('printBtn').onclick=()=>{
   const date=$('recordDate').value||today();
   const cls=$('recordClass').value;
+
+  const list=records
+    .filter(r=>r.date===date&&(!cls||r.className===cls))
+    .sort((a,b)=>a.time.localeCompare(b.time));
+
+  const data=[
+    ['رقم','اسم التلميذ','القسم','التاريخ','وقت الحضور'],
+    ...list.map((r,i)=>[
+      i+1,r.name,r.className,r.date,r.time
+    ]),
+    [],
+    ['مجموع الحاضرين',list.length]
+  ];
+
+  const ws=XLSX.utils.aoa_to_sheet(data);
+  ws['!cols']=[
+    {wch:8},{wch:30},{wch:20},{wch:16},{wch:16}
+  ];
+
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'سجل الحضور');
+
+  XLSX.writeFile(wb,'سجل_الحضور_'+date+'.xlsx');
+};
+
+  const date=$('recordDate').value||today();
+  const cls=$('recordClass').value;
   const list=records
     .filter(r=>r.date===date&&(!cls||r.className===cls))
     .sort((a,b)=>a.time.localeCompare(b.time));
