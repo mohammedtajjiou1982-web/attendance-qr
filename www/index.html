@@ -47,7 +47,6 @@ footer{text-align:center;color:#64748b;padding:20px;font-size:12px}
 <button class="tab" data-tab="records">سجل الحضور</button>
 <button class="tab" data-tab="backup">النسخة الاحتياطية</button>
 </nav>
-
 <section id="scan" class="panel hidden">
 <h2>مسح رمز التلميذ</h2>
 <p class="muted">اضغط على تشغيل الكاميرا ووجّهها نحو رمز QR الخاص بالتلميذ.</p>
@@ -65,7 +64,6 @@ footer{text-align:center;color:#64748b;padding:20px;font-size:12px}
 <div class="actions"><button class="primary" id="manualBtn">تسجيل الدخول</button></div>
 </div>
 </section>
-
 <section id="students" class="panel">
 <h2>إضافة تلميذ</h2>
 <div class="grid">
@@ -86,7 +84,6 @@ footer{text-align:center;color:#64748b;padding:20px;font-size:12px}
 </div>
 <div class="tablewrap" style="margin-top:12px"><table><thead><tr><th>الرقم</th><th>الاسم</th><th>القسم</th><th>QR</th><th>حذف</th></tr></thead><tbody id="studentRows"></tbody></table></div>
 </section>
-
 <section id="records" class="panel hidden">
 <h2>سجل الدخول</h2>
 <div class="grid">
@@ -180,40 +177,31 @@ window.deleteStudent=encodedId=>{
     const ctx = new AudioCtx();
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
-
     osc.connect(gain);
     gain.connect(ctx.destination);
-
     osc.type = 'sine';
     osc.frequency.value = success ? 880 : 220;
     gain.gain.value = 0.2;
-
     osc.start();
     osc.stop(ctx.currentTime + (success ? 0.15 : 0.5));
-
     osc.onended = () => ctx.close();
   }catch(e){}
      }
 function register(id,method){
   id=String(id||'').trim().replace(/^SCHOOL-STUDENT:/,'');
-
   const s=students.find(x=>x.id===id);
-
   if(!s){
     playScanSound(false);
     msg('هذا الرمز غير مسجل في لائحة التلاميذ: '+id,'err');
     return;
   }
-
   if(records.some(r=>r.id===id&&r.date===today())){
     playScanSound(false);
     msg('تم تسجيل حضور هذا التلميذ اليوم مسبقاً: '+s.name,'info');
     return;
   }
-
   const now=new Date();
   const time=now.toLocaleTimeString('en-GB');
-
   records.push({
     id:s.id,
     name:s.name,
@@ -222,7 +210,6 @@ function register(id,method){
     time,
     method
   });
-
   save();
   refresh();
   playScanSound(true);
@@ -252,15 +239,12 @@ $('exportCsv').onclick=()=>{
  const csv='\uFEFF'+[['رقم التلميذ','الاسم','القسم','التاريخ','الوقت','طريقة التسجيل'],...rows.map(r=>[r.id,r.name,r.className,r.date,r.time,r.method==='qr'?'QR':'يدوي'])].map(row=>row.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(';')).join('\r\n');
  const a=document.createElement('a'),url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.href=url;a.download='attendance-'+date+'.csv';a.click();URL.revokeObjectURL(url);
 };
-
 $('printBtn').onclick=()=>{
   const date=$('recordDate').value||today();
-  const cls=$('recordClass').value;
-
+   onst cls=$('recordClass').value;
   const list=records
     .filter(r=>r.date===date&&(!cls||r.className===cls))
     .sort((a,b)=>a.time.localeCompare(b.time));
-
   const data=[
     ['رقم','اسم التلميذ','القسم','التاريخ','وقت الحضور'],
     ...list.map((r,i)=>[
@@ -269,24 +253,19 @@ $('printBtn').onclick=()=>{
     [],
     ['مجموع الحاضرين',list.length]
   ];
-
   const ws=XLSX.utils.aoa_to_sheet(data);
   ws['!cols']=[
     {wch:8},{wch:30},{wch:20},{wch:16},{wch:16}
   ];
-
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,'سجل الحضور');
-
   XLSX.writeFile(wb,'سجل_الحضور_'+date+'.xlsx');
 };
-
   const date=$('recordDate').value||today();
   const cls=$('recordClass').value;
   const list=records
     .filter(r=>r.date===date&&(!cls||r.className===cls))
     .sort((a,b)=>a.time.localeCompare(b.time));
-
   const rows=list.map((r,i)=>`
     <tr>
       <td>${i+1}</td>
@@ -295,13 +274,11 @@ $('printBtn').onclick=()=>{
       <td>${escapeHtml(r.time)}</td>
     </tr>
   `).join('');
-
   const w=window.open('','_blank');
   if(!w){
     alert('تعذر فتح صفحة الطباعة. تحقق من السماح بالنوافذ المنبثقة.');
     return;
   }
-
   w.document.write(`
     <!DOCTYPE html>
     <html lang="ar" dir="rtl">
@@ -348,7 +325,6 @@ $('clearDay').onclick=()=>{
  const date=$('recordDate').value||today();if(!confirm('حذف جميع سجلات يوم '+date+'؟'))return;
  records=records.filter(r=>r.date!==date);save();refresh();
 };
-
 function backupObject(){
  return {app:"student-qr-attendance",version:1,createdAt:new Date().toISOString(),students,records};
 }
@@ -381,9 +357,6 @@ $('restoreFile').onchange=async e=>{
   localStorage.setItem(key,d);
  }
 })();
-
-
-
 $('importStudentsExcel').onclick=()=>{
  if(!window.XLSX){alert('تعذر تحميل مكتبة Excel. تحقق من اتصال الإنترنت ثم أعد المحاولة.');return;}
  $('studentsExcelFile').click();
@@ -420,7 +393,6 @@ $('studentsExcelFile').onchange=async e=>{
  }
  e.target.value='';
 };
-
 $('exportStudentsExcel').onclick=()=>{
  if(!students.length){alert('لا توجد أسماء تلاميذ لتحميلها.');return;}
  const rows=students.map((s,i)=>({'الترتيب':i+1,'رقم التلميذ':s.id,'الاسم الكامل':s.name,'القسم':s.className}));
@@ -434,7 +406,6 @@ $('exportStudentsExcel').onclick=()=>{
   alert('تعذر تحميل مكتبة Excel؛ تم تنزيل ملف CSV يمكن فتحه ببرنامج Excel.');
  }
 };
-
 refresh();
 </script>
 </body>
